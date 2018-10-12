@@ -2,6 +2,7 @@ package coursier.cli
 
 import caseapp.CommandParser
 import caseapp.core.help.CommandsHelp
+import coursier.cli.publish.Publish
 import coursier.cli.resolve.Resolve
 
 object CoursierCommand {
@@ -11,6 +12,7 @@ object CoursierCommand {
       .add(Bootstrap)
       .add(Fetch)
       .add(Launch)
+      .add(Publish)
       .add(Resolve)
       .add(SparkSubmit)
       .reverse
@@ -20,6 +22,7 @@ object CoursierCommand {
       .add(Bootstrap)
       .add(Fetch)
       .add(Launch)
+      .add(Publish)
       .add(Resolve)
       .add(SparkSubmit)
       .reverse
