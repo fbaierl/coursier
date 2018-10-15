@@ -10,6 +10,8 @@ trait Upload {
 
     val baseUrl0 = baseUrl.stripSuffix("/")
 
+    // TODO Add exponential back off for transient errors
+
     // uploading stuff sequentially for now
     // stops at first error
     val uploads = fileSet
