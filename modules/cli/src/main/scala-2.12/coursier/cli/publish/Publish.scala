@@ -9,14 +9,14 @@ import cats.data.Validated
 import coursier.cli.publish.options.PublishOptions
 import coursier.cli.publish.params.PublishParams
 import coursier.core.{ModuleName, Organization}
-import coursier.util.Schedulable
+import coursier.util.{Schedulable, Task}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext}
 
 object Publish extends CaseApp[PublishOptions] {
 
-  def pomModuleVersion(params: PublishParams): Either[String, (Content, Organization, ModuleName, String)] =
+  def pomModuleVersion(params: PublishParams, now: Instant): Either[String, (Content, Organization, ModuleName, String)] =
     (params.metadata.organization, params.metadata.name, params.metadata.version) match {
       case (Some(org), Some(name), Some(ver)) =>
 
@@ -30,7 +30,7 @@ object Publish extends CaseApp[PublishOptions] {
                   (org0, name0, ver0, None)
               }
             )
-            Content.InMemory(Instant.now(), pomStr.getBytes(StandardCharsets.UTF_8))
+            Content.InMemory(now, pomStr.getBytes(StandardCharsets.UTF_8))
         }
 
         Right((content, org, name, ver))
@@ -68,7 +68,7 @@ object Publish extends CaseApp[PublishOptions] {
                     elem0 = verOpt.fold(elem0)(Pom.overrideVersion(_, elem0))
 
                     val pomStr = Pom.print(elem0)
-                    Content.InMemory(Instant.now(), pomStr.getBytes(StandardCharsets.UTF_8))
+                    Content.InMemory(now, pomStr.getBytes(StandardCharsets.UTF_8))
                   }
 
                 Right((content, org, name, ver))
@@ -86,7 +86,9 @@ object Publish extends CaseApp[PublishOptions] {
 
       case Validated.Valid(params) =>
 
-        pomModuleVersion(params) match {
+        val now = Instant.now()
+
+        pomModuleVersion(params, now) match {
           case Left(err) =>
             Console.err.println(err)
             sys.exit(1)
@@ -118,11 +120,27 @@ object Publish extends CaseApp[PublishOptions] {
                 artifacts
             )
 
+            val fileSetTask = for {
+              fs1 <- {
+                if (params.checksum.checksums.isEmpty)
+                  Task.point(fileSet0)
+                else
+                  Checksums(params.checksum.checksums, fileSet0, now)
+              }
+              fs2 <- Signatures(fs1)
+            } yield fs2
+
             val pool = Schedulable.fixedThreadPool(4) // sizing…
             val upload = OkhttpUpload.create(pool)
 
             val logger = Upload.Logger(Console.err)
-            val f = upload.uploadFileSet(params.repository.repository, fileSet0, logger).future()(ExecutionContext.global)
+
+            val task = for {
+              fileSet <- fileSetTask
+              res <- upload.uploadFileSet(params.repository.repository, fileSet, logger)
+            } yield res
+
+            val f = task.future()(ExecutionContext.global)
             Await.result(f, Duration.Inf)
         }
     }

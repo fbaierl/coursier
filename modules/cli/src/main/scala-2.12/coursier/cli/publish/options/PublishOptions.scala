@@ -11,7 +11,10 @@ final case class PublishOptions(
     metadataOptions: MetadataOptions = MetadataOptions(),
 
   @Recurse
-    singlePackageOptions: SinglePackageOptions = SinglePackageOptions()
+    singlePackageOptions: SinglePackageOptions = SinglePackageOptions(),
+
+  @Recurse
+    checksumOptions: ChecksumOptions = ChecksumOptions()
 
 )
 

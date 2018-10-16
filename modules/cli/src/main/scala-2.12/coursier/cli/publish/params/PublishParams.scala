@@ -7,7 +7,8 @@ import coursier.cli.publish.options.PublishOptions
 final case class PublishParams(
   repository: RepositoryParams,
   metadata: MetadataParams,
-  singlePackage: SinglePackageParams
+  singlePackage: SinglePackageParams,
+  checksum: ChecksumParams
 )
 
 object PublishParams {
@@ -19,13 +20,15 @@ object PublishParams {
     val repositoryV = RepositoryParams(options.repositoryOptions)
     val metadataV = MetadataParams(options.metadataOptions, defaultScalaVersion)
     val singlePackageV = SinglePackageParams(options.singlePackageOptions)
+    val checksumV = ChecksumParams(options.checksumOptions)
 
-    (repositoryV, metadataV, singlePackageV).mapN {
-      (repository, metadata, singlePackage) =>
+    (repositoryV, metadataV, singlePackageV, checksumV).mapN {
+      (repository, metadata, singlePackage, checksum) =>
         PublishParams(
           repository,
           metadata,
-          singlePackage
+          singlePackage,
+          checksum
         )
     }
   }
