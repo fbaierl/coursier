@@ -2,16 +2,15 @@ package coursier.cli.publish.params
 
 import java.nio.file.{Files, Path, Paths}
 
-import cats.data.{Validated, ValidatedNel}
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.implicits._
 import coursier.cli.publish.options.SinglePackageOptions
-import coursier.core.Classifier
-import coursier.util.ValidationNel
+import coursier.core.{Classifier, Extension}
 
 final case class SinglePackageParams(
   jarOpt: Option[Path],
   pomOpt: Option[Path],
-  artifacts: Seq[(Classifier, Path)]
+  artifacts: Seq[(Classifier, Extension, Path)]
 )
 
 object SinglePackageParams {
@@ -21,6 +20,21 @@ object SinglePackageParams {
   def apply(options: SinglePackageOptions): ValidatedNel[String, SinglePackageParams] = {
 
     // FIXME This does some I/O (not reflected in return type)
+
+    def fileExtensionV(path: String): ValidatedNel[String, (Path, String)] =
+      fileV(path).withEither(_.right.flatMap { p =>
+        val name = p.getFileName.toString
+        val idx = name.lastIndexOf('.')
+        if (idx < 0)
+          Left(NonEmptyList.one(s"$path has no extension, specify one by passing it with classifier:extension:$path"))
+        else {
+          val ext = name.drop(idx + 1)
+          if (ext.isEmpty)
+            Left(NonEmptyList.one(s"$path extension is empty, specify one by passing it with classifier:extension:$path"))
+          else
+            Right((p, ext))
+        }
+      })
 
     def fileV(path: String): ValidatedNel[String, Path] = {
       val p = Paths.get(path)
@@ -44,9 +58,14 @@ object SinglePackageParams {
     val pomOptV = fileOptV(options.pom)
 
     val artifactsV = options.artifact.traverse { s =>
-      s.split(":", 2) match {
+      s.split(":", 3) match {
+        case Array(strClassifier, strExtension, path) =>
+          fileV(path).map((Classifier(strClassifier), Extension(strExtension), _))
         case Array(strClassifier, path) =>
-          fileV(path).map((Classifier(strClassifier), _))
+          fileExtensionV(path).map {
+            case (p, ext) =>
+              (Classifier(strClassifier), Extension(ext), p)
+          }
         case _ =>
           Validated.invalidNel(s"Maformed artifact argument: $s (expected: ${q}classifier:/path/to/artifact$q)")
       }

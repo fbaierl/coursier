@@ -4,9 +4,43 @@ import coursier.core.{Configuration, Type}
 import coursier.{ModuleName, Organization}
 
 import scala.collection.mutable
-import scala.xml.NodeSeq
+import scala.xml.{Elem, NodeSeq}
 
 object Pom {
+
+  // FIXME There's a lib for that
+  final case class License(name: String, url: String)
+
+  object License {
+    def apache2: License =
+      License("Apache 2.0", "http://opensource.org/licenses/Apache-2.0")
+  }
+
+
+  final case class Scm(
+    url: String,
+    connection: String,
+    developerConnection: String
+  )
+
+  object Scm {
+    def gitHub(org: String, project: String): Scm =
+      Scm(
+        s"https://github.com/$org/$project.git",
+        s"scm:git:github.com/$org/$project.git",
+        s"scm:git:git@github.com:$org/$project.git"
+      )
+  }
+
+
+  // FIXME What's mandatory? What's not?
+  final case class Developer(
+    id: String,
+    name: String,
+    url: String,
+    mail: Option[String]
+  )
+
 
   def create(
     organization: Organization,
@@ -17,7 +51,10 @@ object Pom {
     url: Option[String] = None,
     name: Option[String] = None,
     // TODO Accept full-fledged coursier.Dependency
-    dependencies: Seq[(Organization, ModuleName, String, Option[Configuration])] = Nil
+    dependencies: Seq[(Organization, ModuleName, String, Option[Configuration])] = Nil,
+    license: Option[License] = None,
+    scm: Option[Scm] = None,
+    developers: Seq[Developer] = Nil
   ): String = {
 
     val nodes = new mutable.ListBuffer[NodeSeq]
@@ -49,54 +86,123 @@ object Pom {
       </organization>
     }
 
-    // TODO Licenses
-    //   <licenses>
-    //     <license>
-    //       <name>Apache 2.0</name>
-    //       <url>http://opensource.org/licenses/Apache-2.0</url>
-    //       <distribution>repo</distribution>
-    //     </license>
-    //   </licenses>
+    for (l <- license)
+      nodes +=
+        <licenses>
+          <license>
+            <name>{l.name}</name>
+            <url>{l.url}</url>
+            <distribution>repo</distribution>
+          </license>
+        </licenses>
 
-    // TODO SCM
-    //   <scm>
-    //     <url>https://github.com/coursier/coursier.git</url>
-    //     <connection>scm:git:github.com/coursier/coursier.git</connection>
-    //     <developerConnection>scm:git:git@github.com:coursier/coursier.git</developerConnection>
-    //   </scm>
+    for (s <- scm)
+      nodes +=
+        <scm>
+          <url>{s.url}</url>
+          <connection>{s.connection}</connection>
+          <developerConnection>{s.developerConnection}</developerConnection>
+        </scm>
 
-    // TODO Developers
-    // <developers>
-    //   <developer>
-    //     <id>jane-d</id>
-    //     <name>Jane Doe</name>
-    //     <url>https://github.com/jane-d</url>
-    //   </developer>
-    // </developers>
-    //   + optional mail
-
-    nodes +=
-      <dependencies>
-        {
-          dependencies.map {
-            case (depOrg, depName, ver, confOpt) =>
-              <dependency>
-                <groupId>{depOrg.value}</groupId>
-                <artifactId>{depName.value}</artifactId>
-                <version>{version}</version>
-                {confOpt.fold[NodeSeq](Nil)(c => <scope>{c}</scope>)}
-              </dependency>
+    if (developers.nonEmpty)
+      nodes +=
+        <developers>
+          {
+            developers.map { d =>
+              <developer>
+                <id>{d.id}</id>
+                <name>{d.name}</name>
+                <url>{d.url}</url>
+              </developer>
+              // + optional mail
+            }
           }
-        }
-      </dependencies>
+        </developers>
 
-    val printer = new scala.xml.PrettyPrinter(Int.MaxValue, 2)
+    if (dependencies.nonEmpty)
+      nodes +=
+        <dependencies>
+          {
+            dependencies.map {
+              case (depOrg, depName, ver, confOpt) =>
+                <dependency>
+                  <groupId>{depOrg.value}</groupId>
+                  <artifactId>{depName.value}</artifactId>
+                  <version>{ver}</version>
+                  {confOpt.fold[NodeSeq](Nil)(c => <scope>{c}</scope>)}
+                </dependency>
+            }
+          }
+        </dependencies>
 
-    """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' + printer.format(
+    print(
       <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
         {nodes.result()}
       </project>
     )
+  }
+
+  def overrideOrganization(organization: Organization, content: Elem): Elem =
+    content.copy(
+      child = content.child.map {
+        case elem: Elem if elem.label == "project" =>
+          elem.copy(
+            child = elem.child.map {
+              case n if n.label == "groupId" =>
+                <groupId>{organization.value}</groupId>
+              case elem0: Elem if elem0.label == "organization" =>
+                elem0.copy(
+                  child = elem0.child.map {
+                    case n if n.label == "name" =>
+                      <name>{organization}</name>
+                    case n =>
+                      n
+                  }
+                )
+              case n =>
+                n
+            }
+          )
+        case n =>
+          n
+      }
+    )
+  def overrideModuleName(name: ModuleName, content: Elem): Elem =
+    content.copy(
+      child = content.child.map {
+        case elem: Elem if elem.label == "project" =>
+          elem.copy(
+            child = elem.child.map {
+              case n if n.label == "artifactId" =>
+                <artifactId>{name.value}</artifactId>
+              case n =>
+                n
+            }
+          )
+        case n =>
+          n
+      }
+    )
+  def overrideVersion(version: String, content: Elem): Elem =
+    content.copy(
+      child = content.child.map {
+        case elem: Elem if elem.label == "project" =>
+          elem.copy(
+            child = elem.child.map {
+              case n if n.label == "version" =>
+                <version>{version}</version>
+              case n =>
+                n
+            }
+          )
+        case n =>
+          n
+      }
+    )
+
+  def print(elem: Elem): String = {
+    val printer = new scala.xml.PrettyPrinter(Int.MaxValue, 2)
+    """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' + printer.format(elem)
   }
 
 }

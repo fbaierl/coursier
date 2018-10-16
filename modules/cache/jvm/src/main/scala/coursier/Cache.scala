@@ -264,7 +264,7 @@ object Cache {
     "$"
   ).r
 
-  private def basicAuthenticationEncode(user: String, password: String): String =
+  def basicAuthenticationEncode(user: String, password: String): String =
     Base64.getEncoder.encodeToString(
       s"$user:$password".getBytes(UTF_8)
     )

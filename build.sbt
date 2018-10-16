@@ -181,7 +181,7 @@ lazy val publish = project("publish")
   )
 
 lazy val cli = project("cli")
-  .dependsOn(coreJvm, cacheJvm, extra, publish)
+  .dependsOn(coreJvm, cacheJvm, extra, okhttp, publish)
   .enablePlugins(PackPlugin, SbtProguard)
   .settings(
     shared,
