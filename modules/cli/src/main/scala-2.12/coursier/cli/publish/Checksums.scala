@@ -34,7 +34,7 @@ object Checksums {
       }
 
     // compute missing checksum files
-    val elementsTask = Task.gather.gather {
+    val checksumFilesTask = Task.gather.gather {
       for {
         type0 <- types
         (path, content) <- files
@@ -47,7 +47,7 @@ object Checksums {
         }
     }
 
-    elementsTask.map { elements =>
+    checksumFilesTask.map { elements =>
       FileSet(elements)
     }
   }

@@ -8,7 +8,8 @@ final case class PublishParams(
   repository: RepositoryParams,
   metadata: MetadataParams,
   singlePackage: SinglePackageParams,
-  checksum: ChecksumParams
+  checksum: ChecksumParams,
+  signature: SignatureParams
 )
 
 object PublishParams {
@@ -21,14 +22,16 @@ object PublishParams {
     val metadataV = MetadataParams(options.metadataOptions, defaultScalaVersion)
     val singlePackageV = SinglePackageParams(options.singlePackageOptions)
     val checksumV = ChecksumParams(options.checksumOptions)
+    val signatureV = SignatureParams(options.signatureOptions)
 
-    (repositoryV, metadataV, singlePackageV, checksumV).mapN {
-      (repository, metadata, singlePackage, checksum) =>
+    (repositoryV, metadataV, singlePackageV, checksumV, signatureV).mapN {
+      (repository, metadata, singlePackage, checksum, signature) =>
         PublishParams(
           repository,
           metadata,
           singlePackage,
-          checksum
+          checksum,
+          signature
         )
     }
   }

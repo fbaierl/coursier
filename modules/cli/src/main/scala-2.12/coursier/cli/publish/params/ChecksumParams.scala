@@ -15,8 +15,6 @@ object ChecksumParams {
 
   def apply(options: ChecksumOptions): ValidatedNel[String, ChecksumParams] = {
 
-    println(s"Found checksum arg: ${options.checksums}")
-
     val checksumsV =
       options.checksums match {
         case None =>

@@ -14,7 +14,10 @@ final case class PublishOptions(
     singlePackageOptions: SinglePackageOptions = SinglePackageOptions(),
 
   @Recurse
-    checksumOptions: ChecksumOptions = ChecksumOptions()
+    checksumOptions: ChecksumOptions = ChecksumOptions(),
+
+  @Recurse
+    signatureOptions: SignatureOptions = SignatureOptions()
 
 )
 

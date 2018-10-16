@@ -120,24 +120,35 @@ object Publish extends CaseApp[PublishOptions] {
                 artifacts
             )
 
-            val fileSetTask = for {
-              fs1 <- {
-                if (params.checksum.checksums.isEmpty)
-                  Task.point(fileSet0)
-                else
-                  Checksums(params.checksum.checksums, fileSet0, now)
-              }
-              fs2 <- Signatures(fs1)
-            } yield fs2
-
             val pool = Schedulable.fixedThreadPool(4) // sizing…
             val upload = OkhttpUpload.create(pool)
 
             val logger = Upload.Logger(Console.err)
 
+            val signerOpt: Option[Signer] =
+              if (params.signature.gpg)
+                Some(GpgSigner())
+              else
+                None
+
             val task = for {
-              fileSet <- fileSetTask
-              res <- upload.uploadFileSet(params.repository.repository, fileSet, logger)
+              withChecksums <- {
+                if (params.checksum.checksums.isEmpty)
+                  Task.point(fileSet0)
+                else
+                  Checksums(params.checksum.checksums, fileSet0, now)
+              }
+              finalFileSet <- signerOpt.fold(Task.point(withChecksums)){ signer =>
+                signer
+                  .signatures(withChecksums, now)
+                  .flatMap {
+                    case Left((path, content, msg)) => Task.fail(new Exception(
+                      s"Failed to sign $path: $msg"
+                    ))
+                    case Right(fs) => Task.point(fs)
+                  }
+              }
+              res <- upload.uploadFileSet(params.repository.repository, finalFileSet, logger)
             } yield res
 
             val f = task.future()(ExecutionContext.global)

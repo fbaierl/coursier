@@ -9,6 +9,8 @@ sealed abstract class Content extends Product with Serializable {
   def lastModifiedTask: Task[Instant]
   // TODO Support chunked reading
   def contentTask: Task[Array[Byte]]
+
+  def pathOpt: Option[Path] = None
 }
 
 object Content {
@@ -23,6 +25,8 @@ object Content {
       Task.delay {
         Files.readAllBytes(path)
       }
+    override def pathOpt: Option[Path] =
+      Some(path)
   }
 
   final case class InMemory(lastModified: Instant, content: Array[Byte]) extends Content {
