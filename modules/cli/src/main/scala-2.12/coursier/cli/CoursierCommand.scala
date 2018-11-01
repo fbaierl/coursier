@@ -3,7 +3,7 @@ package coursier.cli
 import caseapp.CommandParser
 import caseapp.core.help.CommandsHelp
 import coursier.cli.publish.Publish
-import coursier.cli.publish.sonatype.SonatypeListProfiles
+import coursier.cli.publish.sonatype.ListProfiles
 import coursier.cli.resolve.Resolve
 
 object CoursierCommand {
@@ -15,7 +15,7 @@ object CoursierCommand {
       .add(Launch)
       .add(Publish)
       .add(Resolve)
-      .add(SonatypeListProfiles, "sonatype-list-profiles")
+      .add(ListProfiles, "sonatype-list-profiles")
       .add(SparkSubmit)
       .reverse
 
@@ -26,7 +26,7 @@ object CoursierCommand {
       .add(Launch)
       .add(Publish)
       .add(Resolve)
-      .add(SonatypeListProfiles, "sonatype-list-profiles")
+      .add(ListProfiles, "sonatype-list-profiles")
       .add(SparkSubmit)
       .reverse
 

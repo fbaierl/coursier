@@ -3,7 +3,7 @@ package cli
 
 import caseapp.core.app.CommandAppA
 import coursier.cli.publish.Publish
-import coursier.cli.publish.sonatype.SonatypeListProfiles
+import coursier.cli.publish.sonatype.ListProfiles
 import coursier.cli.resolve.Resolve
 import shapeless._
 
@@ -26,7 +26,7 @@ object Coursier extends CommandAppA(CoursierCommand.parser, CoursierCommand.help
       case Inr(Inr(Inr(Inr(Inl(resolveOptions))))) =>
         Resolve.run(resolveOptions, args)
       case Inr(Inr(Inr(Inr(Inr(Inl(sonatypeListProfilesOptions)))))) =>
-        SonatypeListProfiles.run(sonatypeListProfilesOptions, args)
+        ListProfiles.run(sonatypeListProfilesOptions, args)
       case Inr(Inr(Inr(Inr(Inr(Inr(Inl(sparkSubmitOptions))))))) =>
         SparkSubmit.run(sparkSubmitOptions, args)
       case Inr(Inr(Inr(Inr(Inr(Inr(Inr(cnil))))))) =>

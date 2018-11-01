@@ -1,22 +1,35 @@
 package coursier.cli.publish.sonatype
 
+import java.nio.charset.StandardCharsets
+
 import argonaut._
 import argonaut.Argonaut._
-import com.squareup.okhttp.{OkHttpClient, Request}
+import com.squareup.okhttp.{MediaType, OkHttpClient, Request, RequestBody}
 import coursier.Cache
 import coursier.core.Authentication
 import coursier.util.Task
 
 final case class SonatypeApi(client: OkHttpClient, base: String, authentication: Option[Authentication]) {
 
+  // vaguely inspired by https://github.com/lihaoyi/mill/blob/7b4ced648ecd9b79b3a16d67552f0bb69f4dd543/scalalib/src/mill/scalalib/publish/SonatypeHttpApi.scala
+
   import SonatypeApi._
 
-  private def get[T: DecodeJson](path: String): Task[T] = {
+  private def post[B: EncodeJson, T: DecodeJson](path: String, content: B): Task[T] = {
+
+    val body = RequestBody.create(SonatypeApi.mediaType, EncodeJson.of[B].apply(content).nospaces.getBytes(StandardCharsets.UTF_8))
+
+    ???
+  }
+
+  private def get[T: DecodeJson](path: String, post: Option[RequestBody] = None): Task[T] = {
 
     val url = s"$base/$path"
 
     val request = {
       val b = new Request.Builder().url(url)
+      for (body <- post)
+        b.post(body)
 
       // Handling this ourselves rather than via client.setAuthenticator / com.squareup.okhttp.Authenticator
       for (auth <- authentication)
@@ -33,11 +46,11 @@ final case class SonatypeApi(client: OkHttpClient, base: String, authentication:
       Console.err.println(s"Done: $url")
 
       if (resp.isSuccessful)
-        resp.body().string().decodeEither[T] match {
+        resp.body().string().decodeEither(Response.decode[T]) match {
           case Left(e) =>
             Task.fail(new Exception(s"Received invalid response from $url: $e"))
           case Right(t) =>
-            Task.point(t)
+            Task.point(t.data)
         }
       else
         Task.fail(new Exception(s"Failed to get $url (http status: ${resp.code()})"))
@@ -47,8 +60,13 @@ final case class SonatypeApi(client: OkHttpClient, base: String, authentication:
   }
 
   def listProfiles(): Task[Seq[SonatypeApi.Profile]] =
-    get("staging/profiles")(Profiles.decode)
-      .map(_.data.map(_.profile))
+    // for w/e reasons, Profiles.Profile.decode isn't implicitly picked
+    get("staging/profiles")(DecodeJson.ListDecodeJson(Profiles.Profile.decode))
+      .map(_.map(_.profile))
+
+  def createStagingRepository(profile: Profile, description: String) = {
+    ???
+  }
 
 }
 
@@ -60,11 +78,16 @@ object SonatypeApi {
     uri: String
   )
 
-  object Profiles {
+  private val mediaType = MediaType.parse("application/json")
 
+  private final case class Response[T](data: T)
+
+  private object Response {
     import argonaut.ArgonautShapeless._
+    implicit def decode[T: DecodeJson] = DecodeJson.of[Response[T]]
+  }
 
-    final case class Response(data: List[Profile])
+  object Profiles {
 
     final case class Profile(
       id: String,
@@ -79,7 +102,10 @@ object SonatypeApi {
         )
     }
 
-    implicit val decode = DecodeJson.of[Response]
+    object Profile {
+      import argonaut.ArgonautShapeless._
+      implicit val decode = DecodeJson.of[Profile]
+    }
   }
 
 }

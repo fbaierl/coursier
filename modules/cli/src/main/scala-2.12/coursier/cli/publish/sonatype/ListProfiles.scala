@@ -11,7 +11,7 @@ import coursier.util.Task
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext}
 
-object SonatypeListProfiles extends CaseApp[ListProfilesOptions] {
+object ListProfiles extends CaseApp[ListProfilesOptions] {
   def run(options: ListProfilesOptions, remainingArgs: RemainingArgs): Unit = {
 
     if (remainingArgs.all.nonEmpty)
