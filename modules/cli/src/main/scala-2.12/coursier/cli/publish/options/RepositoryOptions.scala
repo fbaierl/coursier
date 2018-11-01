@@ -13,7 +13,15 @@ final case class RepositoryOptions(
 
   sonatype: Option[Boolean] = None
 
-)
+) {
+  override def toString: String =
+    Seq(
+      repository,
+      user,
+      "****",
+      sonatype
+    ).mkString("RepositoryOptions(", ", ", ")")
+}
 
 object RepositoryOptions {
   implicit val parser = Parser[RepositoryOptions]

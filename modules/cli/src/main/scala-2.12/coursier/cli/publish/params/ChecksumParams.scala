@@ -2,7 +2,7 @@ package coursier.cli.publish.params
 
 import cats.data.{Validated, ValidatedNel}
 import cats.implicits._
-import coursier.cli.publish.ChecksumType
+import coursier.cli.publish.checksum.ChecksumType
 import coursier.cli.publish.options.ChecksumOptions
 
 final case class ChecksumParams(

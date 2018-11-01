@@ -1,14 +1,16 @@
 package coursier.cli.publish
 
-import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.time.Instant
 
 import caseapp._
 import cats.data.Validated
+import coursier.cli.publish.checksum.Checksums
 import coursier.cli.publish.options.PublishOptions
 import coursier.cli.publish.params.PublishParams
+import coursier.cli.publish.signing.{GpgSigner, Signer}
+import coursier.cli.publish.upload.{FileUpload, OkhttpUpload, Upload}
 import coursier.core.{ModuleName, Organization}
 import coursier.util.{Schedulable, Task}
 
@@ -125,8 +127,6 @@ object Publish extends CaseApp[PublishOptions] {
               val root = params.repository.repository.root
               if (root.startsWith("/") || root.startsWith("./"))
                 (FileUpload(Paths.get(root).toAbsolutePath), params.repository.repository.copy(root = "."))
-              else if (root.startsWith("file:"))
-                (FileUpload(Paths.get(new URI(root)).toAbsolutePath), params.repository.repository.copy(root = "."))
               else {
                 val pool = Schedulable.fixedThreadPool(4) // sizing…
                 (OkhttpUpload.create(pool), params.repository.repository)

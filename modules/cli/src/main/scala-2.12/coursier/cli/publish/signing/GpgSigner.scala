@@ -1,9 +1,10 @@
-package coursier.cli.publish
+package coursier.cli.publish.signing
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.nio.file.attribute.{PosixFilePermission, PosixFilePermissions}
 
+import coursier.cli.publish.Content
 import coursier.util.Task
 
 import scala.collection.JavaConverters._

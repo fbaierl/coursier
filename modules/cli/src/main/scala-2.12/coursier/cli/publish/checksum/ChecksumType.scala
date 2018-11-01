@@ -1,7 +1,14 @@
-package coursier.cli.publish
+package coursier.cli.publish.checksum
 
 import java.util.Locale
 
+/**
+  * A type of checksum.
+  *
+  * @param name
+  * @param extension: extension of this checksum type, without a prefix `"."`
+  * @param size: size of hexadecimal string representation - size in bits is this one times 4
+  */
 sealed abstract class ChecksumType(
   val name: String,
   val extension: String,

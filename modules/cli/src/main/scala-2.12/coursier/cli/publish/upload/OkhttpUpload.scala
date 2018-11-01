@@ -1,4 +1,4 @@
-package coursier.cli.publish
+package coursier.cli.publish.upload
 
 import java.util.concurrent.ExecutorService
 
@@ -7,6 +7,7 @@ import coursier.Cache
 import coursier.core.Authentication
 import coursier.util.Task
 
+import scala.collection.JavaConverters._
 import scala.util.Try
 
 final case class OkhttpUpload(client: OkHttpClient, pool: ExecutorService) extends Upload {
@@ -17,7 +18,6 @@ final case class OkhttpUpload(client: OkHttpClient, pool: ExecutorService) exten
 
     val body = RequestBody.create(mediaType, content)
 
-    // TODO Add auth
     val request = {
       val b = new Request.Builder()
         .url(url)
@@ -40,7 +40,15 @@ final case class OkhttpUpload(client: OkHttpClient, pool: ExecutorService) exten
           None
         else {
           val code = response.code()
-          Some(Upload.Error.HttpError(code))
+          if (code == 401) {
+            val realmOpt = Option(response.header("WWW-Authenticate")).collect {
+              case Cache.BasicRealm(r) => r
+            }
+            Some(Upload.Error.Unauthorized(realmOpt))
+          } else {
+            val content = Try(response.body().string()).getOrElse("")
+            Some(Upload.Error.HttpError(code, response.headers().toMultimap.asScala.mapValues(_.asScala.toList).iterator.toMap, content))
+          }
         }
       }
 

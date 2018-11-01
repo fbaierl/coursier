@@ -1,8 +1,11 @@
-package coursier.cli.publish
+package coursier.cli.publish.checksum
 
 import java.math.BigInteger
 import java.security.MessageDigest
 
+/**
+  * A… checksum
+  */
 final case class Checksum(`type`: ChecksumType, value: BigInteger) {
   assert(value.compareTo(BigInteger.ZERO) >= 0)
   assert(value.compareTo(BigInteger.valueOf(16L).pow(`type`.size)) < 0)

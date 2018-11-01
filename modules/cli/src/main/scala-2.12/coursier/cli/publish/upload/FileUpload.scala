@@ -1,10 +1,14 @@
-package coursier.cli.publish
+package coursier.cli.publish.upload
 
 import java.nio.file.{Files, Path}
 
 import coursier.core.Authentication
 import coursier.util.Task
 
+/**
+  * Copies
+  * @param base
+  */
 final case class FileUpload(base: Path) extends Upload {
   private val base0 = base.normalize()
   def upload(

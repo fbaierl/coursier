@@ -1,14 +1,30 @@
-package coursier.cli.publish
+package coursier.cli.publish.signing
 
 import java.nio.charset.StandardCharsets
 import java.time.Instant
 
+import coursier.cli.publish.{Content, FileSet}
 import coursier.util.Task
 
+/**
+  * Signs artifacts.
+  */
 trait Signer {
 
+  /**
+    * Computes the signature of the passed `content`.
+    *
+    * @return: an error message (left), or the signature file content (right), wrapped in [[Task]]
+    */
   def sign(content: Content): Task[Either[String, String]]
 
+  /**
+    * Adds missing signatures in a [[FileSet]].
+    *
+    * @param fileSet: [[FileSet]] to add signatures to - can optionally contain some already calculated signatures
+    * @param now: last modified time for the added signature files
+    * @return a [[FileSet]] of the missing signature files
+    */
   def signatures(fileSet: FileSet, now: Instant): Task[Either[(FileSet.Path, Content, String), FileSet]] = {
 
     val elementsOrSignatures = fileSet.elements.map {

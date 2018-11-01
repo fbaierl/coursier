@@ -256,9 +256,9 @@ object Cache {
     }
   }
 
-  private val BasicRealm = (
-    "^" +
-      Pattern.quote("Basic realm=\"") +
+  private[coursier] val BasicRealm = (
+    "^[Bb][Aa][Ss][Ii][Cc]" +
+      Pattern.quote(" realm=\"") +
       "([^" + Pattern.quote("\"") + "]*)" +
       Pattern.quote("\"") +
     "$"

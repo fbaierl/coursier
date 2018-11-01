@@ -1,12 +1,21 @@
-package coursier.cli.publish
+package coursier.cli.publish.checksum
 
 import java.nio.charset.StandardCharsets
 import java.time.Instant
 
+import coursier.cli.publish.{Content, FileSet}
 import coursier.util.Task
 
 object Checksums {
 
+  /**
+    * Compute the missing checksums in a [[FileSet]].
+    *
+    * @param types: checksum types to check / compute
+    * @param fileSet: initial [[FileSet]], can optionally contain some already calculated checksum
+    * @param now: last modified time for the added checksum files
+    * @return a [[FileSet]] of the missing checksum files
+    */
   def apply(types: Seq[ChecksumType], fileSet: FileSet, now: Instant): Task[FileSet] = {
 
     // separate base files from existing checksums
