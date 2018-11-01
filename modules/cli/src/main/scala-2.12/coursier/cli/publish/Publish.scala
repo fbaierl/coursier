@@ -1,7 +1,8 @@
 package coursier.cli.publish
 
+import java.net.URI
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
+import java.nio.file.{Files, Paths}
 import java.time.Instant
 
 import caseapp._
@@ -120,8 +121,17 @@ object Publish extends CaseApp[PublishOptions] {
                 artifacts
             )
 
-            val pool = Schedulable.fixedThreadPool(4) // sizing…
-            val upload = OkhttpUpload.create(pool)
+            val (upload, repo) = {
+              val root = params.repository.repository.root
+              if (root.startsWith("/") || root.startsWith("./"))
+                (FileUpload(Paths.get(root).toAbsolutePath), params.repository.repository.copy(root = "."))
+              else if (root.startsWith("file:"))
+                (FileUpload(Paths.get(new URI(root)).toAbsolutePath), params.repository.repository.copy(root = "."))
+              else {
+                val pool = Schedulable.fixedThreadPool(4) // sizing…
+                (OkhttpUpload.create(pool), params.repository.repository)
+              }
+            }
 
             val logger = Upload.Logger(Console.err)
 
@@ -137,18 +147,19 @@ object Publish extends CaseApp[PublishOptions] {
                   Task.point(fileSet0)
                 else
                   Checksums(params.checksum.checksums, fileSet0, now)
+                    .map(fileSet0 ++ _)
               }
               finalFileSet <- signerOpt.fold(Task.point(withChecksums)){ signer =>
                 signer
                   .signatures(withChecksums, now)
                   .flatMap {
-                    case Left((path, content, msg)) => Task.fail(new Exception(
+                    case Left((path, _, msg)) => Task.fail(new Exception(
                       s"Failed to sign $path: $msg"
                     ))
-                    case Right(fs) => Task.point(fs)
+                    case Right(fs) => Task.point(withChecksums ++ fs)
                   }
               }
-              res <- upload.uploadFileSet(params.repository.repository, finalFileSet, logger)
+              res <- upload.uploadFileSet(repo, finalFileSet, logger)
             } yield res
 
             val f = task.future()(ExecutionContext.global)

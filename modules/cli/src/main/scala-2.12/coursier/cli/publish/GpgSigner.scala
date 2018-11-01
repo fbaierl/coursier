@@ -1,7 +1,7 @@
 package coursier.cli.publish
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 import java.nio.file.attribute.{PosixFilePermission, PosixFilePermissions}
 
 import coursier.util.Task
@@ -9,12 +9,36 @@ import coursier.util.Task
 import scala.collection.JavaConverters._
 
 final case class GpgSigner(command: String = "gpg", extraOptions: Seq[String] = Nil) extends Signer {
-  def sign(content: Content): Task[Either[String, String]] =
+
+  def sign(content: Content): Task[Either[String, String]] = {
+
+    val pathTemporaryTask = content.pathOpt.map(p => Task.point((p, false))).getOrElse {
+      val p = Files.createTempFile(
+        "signer",
+        ".content",
+        PosixFilePermissions.asFileAttribute(
+          Set(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE
+          ).asJava
+        )
+      )
+      content.contentTask.map { b =>
+        Files.write(p, b)
+        (p, true)
+      }
+    }
+
+    pathTemporaryTask.flatMap {
+      case (path, temporary) =>
+        sign0(path, temporary, content)
+    }
+  }
+
+  private def sign0(path: Path, temporary: Boolean, content: Content): Task[Either[String, String]] =
     Task.delay {
 
-      val path = content.pathOpt.getOrElse {
-        ???
-      }
+      // TODO Clean dest. And path if temporary is true.
 
       // inspired by https://github.com/jodersky/sbt-gpg/blob/853e608120eac830068bbb121b486b7cf06fc4b9/src/main/scala/Gpg.scala
 
@@ -34,7 +58,13 @@ final case class GpgSigner(command: String = "gpg", extraOptions: Seq[String] = 
           .command(
             Seq(command) ++
               extraOptions ++
-              Seq("--armor", "--yes", "--output", dest.toAbsolutePath.toString, "--detach-sign", path.toAbsolutePath.toString): _*
+              Seq(
+                "--armor",
+                "--yes",
+                "--output", dest.toAbsolutePath.toString,
+                "--detach-sign",
+                path.toAbsolutePath.toString
+              ): _*
           )
           .inheritIO()
 
@@ -47,7 +77,10 @@ final case class GpgSigner(command: String = "gpg", extraOptions: Seq[String] = 
         else
           Left(s"gpg failed (return code: $retCode)")
       } finally {
-        Files.delete(dest)
+        // Ignore I/O errors?
+        Files.deleteIfExists(dest)
+        if (temporary)
+          Files.deleteIfExists(path)
       }
     }
 }
