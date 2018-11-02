@@ -29,13 +29,22 @@ object ListProfiles extends CaseApp[ListProfilesOptions] {
 
     val api = SonatypeApi(client, params.sonatype.base, params.sonatype.authentication)
 
-    val t = for {
-      l <- api.listProfiles()
-      _  <- Task.delay {
-        for (p <- l)
-          println(s"Profile ${p.name}\n  id: ${p.id}\n  URL: ${p.uri}")
-      }
-    } yield ()
+    val t =
+      if (params.raw)
+        for {
+          json <- api.rawListProfiles()
+          _  <- Task.delay {
+            println(json.spaces2)
+          }
+        } yield ()
+      else
+        for {
+          l <- api.listProfiles()
+          _  <- Task.delay {
+            for (p <- l)
+              println(s"Profile ${p.name}\n  id: ${p.id}\n  URL: ${p.uri}")
+          }
+        } yield ()
 
     Await.result(t.future()(ExecutionContext.global), Duration.Inf)
   }

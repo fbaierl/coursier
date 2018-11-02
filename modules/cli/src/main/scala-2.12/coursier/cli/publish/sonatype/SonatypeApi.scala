@@ -9,22 +9,21 @@ import coursier.Cache
 import coursier.core.Authentication
 import coursier.util.Task
 
+import scala.util.Try
+
 final case class SonatypeApi(client: OkHttpClient, base: String, authentication: Option[Authentication]) {
 
   // vaguely inspired by https://github.com/lihaoyi/mill/blob/7b4ced648ecd9b79b3a16d67552f0bb69f4dd543/scalalib/src/mill/scalalib/publish/SonatypeHttpApi.scala
 
   import SonatypeApi._
 
-  private def post[B: EncodeJson, T: DecodeJson](path: String, content: B): Task[T] = {
+  private def postBody[B: EncodeJson](content: B): RequestBody =
+    RequestBody.create(
+      SonatypeApi.mediaType,
+      Json.obj("data" -> EncodeJson.of[B].apply(content)).nospaces.getBytes(StandardCharsets.UTF_8)
+    )
 
-    val body = RequestBody.create(SonatypeApi.mediaType, EncodeJson.of[B].apply(content).nospaces.getBytes(StandardCharsets.UTF_8))
-
-    ???
-  }
-
-  private def get[T: DecodeJson](path: String, post: Option[RequestBody] = None): Task[T] = {
-
-    val url = s"$base/$path"
+  private def get[T: DecodeJson](url: String, post: Option[RequestBody] = None): Task[T] = {
 
     val request = {
       val b = new Request.Builder().url(url)
@@ -53,7 +52,7 @@ final case class SonatypeApi(client: OkHttpClient, base: String, authentication:
             Task.point(t.data)
         }
       else
-        Task.fail(new Exception(s"Failed to get $url (http status: ${resp.code()})"))
+        Task.fail(new Exception(s"Failed to get $url (http status: ${resp.code()}, response: ${Try(resp.body().string()).getOrElse("")})"))
     }
 
     t.flatMap(identity)
@@ -61,12 +60,25 @@ final case class SonatypeApi(client: OkHttpClient, base: String, authentication:
 
   def listProfiles(): Task[Seq[SonatypeApi.Profile]] =
     // for w/e reasons, Profiles.Profile.decode isn't implicitly picked
-    get("staging/profiles")(DecodeJson.ListDecodeJson(Profiles.Profile.decode))
+    get(s"$base/staging/profiles")(DecodeJson.ListDecodeJson(Profiles.Profile.decode))
       .map(_.map(_.profile))
 
-  def createStagingRepository(profile: Profile, description: String) = {
-    ???
-  }
+  def rawListProfiles(): Task[Json] =
+    get[Json](s"$base/staging/profiles")
+
+  def createStagingRepository(profile: Profile, description: String): Task[String] =
+    get(
+      s"${profile.uri}/start",
+      post = Some(postBody(StartRequest(description))(StartRequest.encoder))
+    )(StartResponse.decoder).map { r =>
+      r.stagedRepositoryId
+    }
+
+  def rawCreateStagingRepository(profile: Profile, description: String): Task[Json] =
+    get[Json](
+      s"${profile.uri}/start",
+      post = Some(postBody(StartRequest(description))(StartRequest.encoder))
+    )
 
 }
 
@@ -106,6 +118,17 @@ object SonatypeApi {
       import argonaut.ArgonautShapeless._
       implicit val decode = DecodeJson.of[Profile]
     }
+  }
+
+  private final case class StartRequest(description: String)
+  private object StartRequest {
+    import argonaut.ArgonautShapeless._
+    implicit val encoder = EncodeJson.of[StartRequest]
+  }
+  private final case class StartResponse(stagedRepositoryId: String)
+  private object StartResponse {
+    import argonaut.ArgonautShapeless._
+    implicit val decoder = DecodeJson.of[StartResponse]
   }
 
 }

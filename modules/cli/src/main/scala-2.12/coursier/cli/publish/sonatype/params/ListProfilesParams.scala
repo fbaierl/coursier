@@ -4,6 +4,7 @@ import cats.data.ValidatedNel
 import coursier.cli.publish.sonatype.options.ListProfilesOptions
 
 final case class ListProfilesParams(
+  raw: Boolean,
   sonatype: SonatypeParams
 )
 
@@ -14,6 +15,7 @@ object ListProfilesParams {
 
     sonatypeV.map { sonatype =>
       ListProfilesParams(
+        options.raw,
         sonatype
       )
     }

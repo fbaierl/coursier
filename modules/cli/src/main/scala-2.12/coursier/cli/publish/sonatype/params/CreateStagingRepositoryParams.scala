@@ -1,11 +1,14 @@
 package coursier.cli.publish.sonatype.params
 
 import cats.data.{Validated, ValidatedNel}
+import cats.implicits._
 import coursier.cli.publish.sonatype.options.CreateStagingRepositoryOptions
 
 final case class CreateStagingRepositoryParams(
+  raw: Boolean,
   profile: Either[String, String], // left: id, right: name
-  description: Option[String]
+  description: Option[String],
+  sonatype: SonatypeParams
 )
 
 object CreateStagingRepositoryParams {
@@ -24,11 +27,16 @@ object CreateStagingRepositoryParams {
 
     val description = Some(options.description).filter(_.nonEmpty)
 
-    profileV.map { profile =>
-      CreateStagingRepositoryParams(
-        profile,
-        description
-      )
+    val sonatypeV = SonatypeParams(options.sonatype)
+
+    (profileV, sonatypeV).mapN {
+      (profile, sonatype) =>
+        CreateStagingRepositoryParams(
+          options.raw,
+          profile,
+          description,
+          sonatype
+        )
     }
   }
 }

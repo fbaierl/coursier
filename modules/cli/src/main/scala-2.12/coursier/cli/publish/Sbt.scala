@@ -1,5 +1,9 @@
 package coursier.cli.publish
 
-object Sbt {
+import java.nio.file.Path
+
+final case class Sbt(directory: Path) {
+
+
 
 }
