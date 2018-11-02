@@ -10,8 +10,6 @@ import scala.xml.XML
 
 final class Sbt(directory: File, plugin: File, ec: ExecutionContext) {
 
-  val dest = Files.createTempFile("coursier-publish-sbt-structure", ".xml")
-
   def run(sbtCommands: String, silent: Boolean = true) = {
 
     val processCommands = Seq("sbt", sbtCommands) // UTF-8…
@@ -33,6 +31,9 @@ final class Sbt(directory: File, plugin: File, ec: ExecutionContext) {
 
     implicit val ec0 = ec
 
+    // blocking (shortly, but still)
+    val dest = Files.createTempFile("coursier-publish-sbt-structure", ".xml")
+
     val optString = "prettyPrint"
 
     val setCommands = Seq(
@@ -51,7 +52,10 @@ final class Sbt(directory: File, plugin: File, ec: ExecutionContext) {
       run(sbtCommands, silent = silent) match {
         case Success(0) =>
           Future {
-            new String(java.nio.file.Files.readAllBytes(dest), "UTF-8")
+            try new String(java.nio.file.Files.readAllBytes(dest), "UTF-8")
+            finally {
+              Files.deleteIfExists(dest)
+            }
           }
         case Success(n) =>
           Future.failed(new Exception(s"sbt exited with code $n"))
