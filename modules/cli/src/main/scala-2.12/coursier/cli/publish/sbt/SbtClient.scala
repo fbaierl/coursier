@@ -1,4 +1,4 @@
-package coursier.cli.publish
+package coursier.cli.publish.sbt
 
 import java.io.ByteArrayOutputStream
 import java.net.URI

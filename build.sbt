@@ -174,14 +174,8 @@ lazy val extra = project("extra")
         .map("scala.scalanative." + _)
   )
 
-lazy val publish = project("publish")
-  .settings(
-    shared,
-    coursierPrefix,
-  )
-
 lazy val cli = project("cli")
-  .dependsOn(coreJvm, cacheJvm, extra, okhttp, publish)
+  .dependsOn(coreJvm, cacheJvm, extra, okhttp)
   .enablePlugins(PackPlugin, SbtProguard)
   .settings(
     shared,
