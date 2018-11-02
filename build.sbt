@@ -195,6 +195,8 @@ lazy val cli = project("cli")
           Deps.caseApp,
           Deps.catsCore,
           Deps.argonautShapeless,
+          "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.0.0",
+          "com.github.briandilley.jsonrpc4j" % "jsonrpc4j" % "1.5.3",
           Deps.junit % Test, // to be able to run tests with pants
           Deps.scalatest % Test
         )
